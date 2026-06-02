@@ -60,7 +60,7 @@ def load_vectorizer(vectorizer_path: str) -> TfidfVectorizer:
     try:
         with open(vectorizer_path, 'rb') as file:
             vectorizer = pickle.load(file)
-        logger.debug('TF-IDF vectorizer loaded from %s', vectorizer_path)
+        logger.debug('TF-IDF vectorizer  %s', vectorizer_path)
         return vectorizer
     except Exception as e:
         logger.error('Error loading vectorizer from %s: %s', vectorizer_path, e)
