@@ -82,14 +82,24 @@ def predict_with_timestamps():
         # Preprocess each comment before vectorizing
         preprocessed_comments = [preprocess_comment(comment) for comment in comments]
         
-        # Transform comments using the vectorizer
+        # 1. Transform comments using the vectorizer
         transformed_comments = vectorizer.transform(preprocessed_comments)
         
-        # Make predictions
-        predictions = model.predict(transformed_comments).tolist()  # Convert to list
+        # 2. Convert sparse matrix to dense array
+        dense_array = transformed_comments.toarray()
+        
+        # 3. Get the exact feature names (vocabulary)
+        feature_names = vectorizer.get_feature_names_out()
+        
+        # 4. Create the Pandas DataFrame to satisfy MLflow's schema requirement
+        input_df = pd.DataFrame(dense_array, columns=feature_names)
+        
+        # 5. Make predictions using the DataFrame
+        predictions = model.predict(input_df).tolist()
         
         # Convert predictions to strings for consistency
         predictions = [str(pred) for pred in predictions]
+        
     except Exception as e:
         return jsonify({"error": f"Prediction failed: {str(e)}"}), 500
     
