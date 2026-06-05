@@ -94,7 +94,7 @@ def main():
         test_size = params['data_ingestion']['test_size']
         
         # Load data from the specified URL (Fixed Unicode Error by adding 'r' prefix)
-        df = load_data(data_url=r'C:\Users\Aditya Mehta\OneDrive\Desktop\youtube-comment-analysis\raw_data\youtube_comments_raw1.csv')
+        df = load_data(data_url=r'D:\Btech ICT\Internship\Youtube_Comments_Sentiments_Analysis\raw_data\youtube_comments_raw1.csv')
         
         # Preprocess the data
         final_df = preprocess_data(df)

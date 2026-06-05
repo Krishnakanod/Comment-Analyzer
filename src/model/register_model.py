@@ -4,9 +4,12 @@ import json
 import mlflow
 import logging
 import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # Set up MLflow tracking URI
-mlflow.set_tracking_uri("http://ec2-13-53-42-235.eu-north-1.compute.amazonaws.com:5000/")
+mlflow.set_tracking_uri(os.getenv('MLFLOW_TRACKING_URI', 'http://ec2-13-53-42-235.eu-north-1.compute.amazonaws.com:5000/'))
 
 
 # logging configuration
@@ -66,8 +69,7 @@ def main():
         model_info_path = 'experiment_info.json'
         model_info = load_model_info(model_info_path)
         
-        model_name = "yt_chrome_plugin_model"
-        register_model(model_name, model_info)
+        register_model('yt_chrome_plugin_model', model_info)
     except Exception as e:
         logger.error('Failed to complete the model registration process: %s', e)
         print(f"Error: {e}")

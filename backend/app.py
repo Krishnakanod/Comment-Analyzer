@@ -1,8 +1,28 @@
 # app.py
 
+import os
+import sys
 import matplotlib
+import logging
+from datetime import datetime
 matplotlib.use('Agg')  # Use non-interactive backend before importing pyplot
 
+# Setup logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler('api.log'),
+        logging.StreamHandler()
+    ]
+)
+logger = logging.getLogger(__name__)
+
+ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+if ROOT_DIR not in sys.path:
+    sys.path.insert(0, ROOT_DIR)
+
+from dotenv import load_dotenv
 from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
 import io
@@ -17,6 +37,14 @@ from nltk.corpus import stopwords
 from nltk.stem import WordNetLemmatizer
 from mlflow.tracking import MlflowClient
 import matplotlib.dates as mdates
+from backend.ai.summarizer import summarize_comments
+
+load_dotenv()
+
+MLFLOW_TRACKING_URI = os.getenv('MLFLOW_TRACKING_URI', 'http://ec2-13-53-42-235.eu-north-1.compute.amazonaws.com:5000/')
+MLFLOW_MODEL_NAME = 'yt_chrome_plugin_model'
+MLFLOW_MODEL_VERSION = '1'
+TFIDF_VECTORIZER_PATH = './tfidf_vectorizer.pkl'
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
@@ -52,16 +80,15 @@ def preprocess_comment(comment):
 
 # Load the model and vectorizer from the model registry and local storage
 def load_model_and_vectorizer(model_name, model_version, vectorizer_path):
-    # Set MLflow tracking URI to your server
-    mlflow.set_tracking_uri("http://ec2-13-53-42-235.eu-north-1.compute.amazonaws.com:5000/")  # Replace with your MLflow tracking URI
+    mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
     client = MlflowClient()
     model_uri = f"models:/{model_name}/{model_version}"
     model = mlflow.pyfunc.load_model(model_uri)
-    vectorizer = joblib.load(vectorizer_path)  # Load the vectorizer
+    vectorizer = joblib.load(vectorizer_path)
     return model, vectorizer
 
 # Initialize the model and vectorizer
-model, vectorizer = load_model_and_vectorizer("yt_chrome_plugin_model", "1", "./tfidf_vectorizer.pkl")  # Update paths and versions as needed
+model, vectorizer = load_model_and_vectorizer(MLFLOW_MODEL_NAME, MLFLOW_MODEL_VERSION, TFIDF_VECTORIZER_PATH)
 
 @app.route('/')
 def home():
@@ -106,6 +133,52 @@ def predict_with_timestamps():
     # Return the response with original comments, predicted sentiments, and timestamps
     response = [{"comment": comment, "sentiment": sentiment, "timestamp": timestamp} for comment, sentiment, timestamp in zip(comments, predictions, timestamps)]
     return jsonify(response)
+
+@app.route('/summarize_comments', methods=['POST'])
+def summarize_comments_endpoint():
+    request_start_time = datetime.now()
+    data = request.json
+    comments_data = data.get('comments')
+    provider = data.get('provider')
+    model_override = data.get('model')
+    batch_size = data.get('batch_size')
+
+    if not comments_data:
+        logger.warning("API call to /summarize_comments with no comments data")
+        return jsonify({"error": "No comments provided"}), 400
+
+    logger.info(f"=== API CALL: /summarize_comments ===")
+    logger.info(f"Comments received: {len(comments_data)}")
+    logger.info(f"Provider: {provider or 'default (gemini)'}")
+    logger.info(f"Model: {model_override or 'default'}")
+    logger.info(f"Batch size: {batch_size or 'default (200)'}")
+
+    try:
+        logger.info("Starting summarization process...")
+        summary_result = summarize_comments(
+            comments=comments_data,
+            provider=provider,
+            model=model_override,
+            batch_size=batch_size
+        )
+        
+        request_duration = (datetime.now() - request_start_time).total_seconds()
+        logger.info(f"Summarization successful!")
+        logger.info(f"Response metadata:")
+        logger.info(f"  - Status: {summary_result.get('status', 'unknown')}")
+        logger.info(f"  - Comment count: {summary_result.get('comment_count')}")
+        logger.info(f"  - Batch count: {summary_result.get('batch_count')}")
+        logger.info(f"  - Processing time: {summary_result.get('processing_time_sec')}s")
+        logger.info(f"  - Total request time: {request_duration:.2f}s")
+        logger.info(f"=== END API CALL ===\n")
+        
+        return jsonify(summary_result)
+    except Exception as e:
+        request_duration = (datetime.now() - request_start_time).total_seconds()
+        logger.error(f"Error in /summarize_comments: {str(e)}")
+        logger.error(f"Request duration before error: {request_duration:.2f}s")
+        logger.error(f"=== END API CALL (ERROR) ===\n")
+        return jsonify({"error": f"Summarization failed: {str(e)}"}), 500
 
 @app.route('/predict', methods=['POST'])
 def predict():

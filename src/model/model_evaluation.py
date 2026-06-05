@@ -1,3 +1,4 @@
+import os
 import numpy as np
 import pandas as pd
 import pickle
@@ -5,13 +6,15 @@ import logging
 import yaml
 import mlflow
 import mlflow.sklearn
+from dotenv import load_dotenv
 from sklearn.metrics import classification_report, confusion_matrix, accuracy_score
 from sklearn.feature_extraction.text import TfidfVectorizer
-import os
 import matplotlib.pyplot as plt
 import seaborn as sns
 import json
 from mlflow.models import infer_signature
+
+load_dotenv()
 
 # logging configuration
 logger = logging.getLogger('model_evaluation')
@@ -135,7 +138,7 @@ def save_model_info(run_id: str, model_path: str, file_path: str) -> None:
 
 
 def main():
-    mlflow.set_tracking_uri("http://ec2-13-53-42-235.eu-north-1.compute.amazonaws.com:5000/")
+    mlflow.set_tracking_uri(os.getenv('MLFLOW_TRACKING_URI', 'http://ec2-13-53-42-235.eu-north-1.compute.amazonaws.com:5000/'))
 
     mlflow.set_experiment('dvc-pipeline-runs')
     
@@ -161,7 +164,7 @@ def main():
             y_test = test_data['Sentiment'].values
 
             # Create a DataFrame for signature inference (using first few rows as an example)
-            input_example = pd.DataFrame(X_test_tfidf.toarray()[:5], columns=vectorizer.get_feature_names_out())  # <--- Added for signature
+            input_example = pd.DataFrame(X_test_tfidf[:5].toarray(), columns=vectorizer.get_feature_names_out())  # <--- Added for signature
 
             # Infer the signature
             signature = infer_signature(input_example, model.predict(X_test_tfidf[:5]))  # <--- Added for signature
