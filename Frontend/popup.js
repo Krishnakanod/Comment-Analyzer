@@ -2,7 +2,7 @@
 
 document.addEventListener("DOMContentLoaded", async () => {
   const outputDiv = document.getElementById("output");
-  const API_KEY = 'AIzaSyBogfaYZY5cmUFgSjAJhZClCc8Z7xlQ-3o';  // Replace with your actual YouTube Data API key
+  const API_KEY = 'AIzaSyBogfaYZY5cmUFgSjAJhZClCc8Z7xlQ-3o';
   const API_URL = 'http://localhost:5000';
   let fetchedComments = [];
 
@@ -26,11 +26,10 @@ document.addEventListener("DOMContentLoaded", async () => {
       const predictions = await getSentimentPredictions(comments);
 
       if (predictions) {
-        // Process the predictions to get sentiment counts and sentiment data
         const sentimentCounts = { "1": 0, "0": 0, "-1": 0 };
-        const sentimentData = []; // For trend graph
+        const sentimentData = [];
         const totalSentimentScore = predictions.reduce((sum, item) => sum + parseInt(item.sentiment), 0);
-        predictions.forEach((item, index) => {
+        predictions.forEach((item) => {
           sentimentCounts[item.sentiment]++;
           sentimentData.push({
             timestamp: item.timestamp,
@@ -38,17 +37,13 @@ document.addEventListener("DOMContentLoaded", async () => {
           });
         });
 
-        // Compute metrics
         const totalComments = comments.length;
         const uniqueCommenters = new Set(comments.map(comment => comment.authorId)).size;
         const totalWords = comments.reduce((sum, comment) => sum + comment.text.split(/\s+/).filter(word => word.length > 0).length, 0);
         const avgWordLength = (totalWords / totalComments).toFixed(2);
         const avgSentimentScore = (totalSentimentScore / totalComments).toFixed(2);
-
-        // Normalize the average sentiment score to a scale of 0 to 10
         const normalizedSentimentScore = (((parseFloat(avgSentimentScore) + 1) / 2) * 10).toFixed(2);
 
-        // Add the Comment Analysis Summary section
         outputDiv.innerHTML += `
           <div class="section">
             <div class="section-title">Comment Analysis Summary</div>
@@ -73,7 +68,6 @@ document.addEventListener("DOMContentLoaded", async () => {
           </div>
         `;
 
-        // Add the AI Summarizer section
         outputDiv.innerHTML += `
           <div class="section">
             <button id="summarize-button" class="primary-button">Generate AI Summary</button>
@@ -81,7 +75,6 @@ document.addEventListener("DOMContentLoaded", async () => {
           </div>
         `;
 
-        // Add the Sentiment Analysis Results section with a placeholder for the chart
         outputDiv.innerHTML += `
           <div class="section">
             <div class="section-title">Sentiment Analysis Results</div>
@@ -89,30 +82,24 @@ document.addEventListener("DOMContentLoaded", async () => {
             <div id="chart-container"></div>
           </div>`;
 
-        // Fetch and display the pie chart inside the chart-container div
         await fetchAndDisplayChart(sentimentCounts);
 
-        // Add the Sentiment Trend Graph section
         outputDiv.innerHTML += `
           <div class="section">
             <div class="section-title">Sentiment Trend Over Time</div>
             <div id="trend-graph-container"></div>
           </div>`;
 
-        // Fetch and display the sentiment trend graph
         await fetchAndDisplayTrendGraph(sentimentData);
 
-        // Add the Word Cloud section
         outputDiv.innerHTML += `
           <div class="section">
             <div class="section-title">Comment Wordcloud</div>
             <div id="wordcloud-container"></div>
           </div>`;
 
-        // Fetch and display the word cloud inside the wordcloud-container div
         await fetchAndDisplayWordCloud(comments.map(comment => comment.text));
 
-        // Add the top comments section
         outputDiv.innerHTML += `
           <div class="section">
             <div class="section-title">Top 25 Comments with Sentiments</div>
@@ -128,6 +115,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     } else {
       outputDiv.innerHTML = "<p>This is not a valid YouTube URL.</p>";
     }
+
     // Attach event listener using event delegation
     outputDiv.addEventListener('click', async (event) => {
       if (event.target && event.target.id === 'summarize-button') {
@@ -140,7 +128,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     let comments = [];
     let pageToken = "";
     try {
-      // Fetch ALL available comments (no hard limit)
       while (true) {
         const response = await fetch(`https://www.googleapis.com/youtube/v3/commentThreads?part=snippet&videoId=${videoId}&maxResults=100&pageToken=${pageToken}&key=${API_KEY}`);
         const data = await response.json();
@@ -172,7 +159,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       });
       const result = await response.json();
       if (response.ok) {
-        return result; // The result now includes sentiment and timestamp
+        return result;
       } else {
         throw new Error(result.error || 'Error fetching predictions');
       }
@@ -190,18 +177,14 @@ document.addEventListener("DOMContentLoaded", async () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ sentiment_counts: sentimentCounts })
       });
-      if (!response.ok) {
-        throw new Error('Failed to fetch chart image');
-      }
+      if (!response.ok) throw new Error('Failed to fetch chart image');
       const blob = await response.blob();
       const imgURL = URL.createObjectURL(blob);
       const img = document.createElement('img');
       img.src = imgURL;
       img.style.width = '100%';
       img.style.marginTop = '20px';
-      // Append the image to the chart-container div
-      const chartContainer = document.getElementById('chart-container');
-      chartContainer.appendChild(img);
+      document.getElementById('chart-container').appendChild(img);
     } catch (error) {
       console.error("Error fetching chart image:", error);
       outputDiv.innerHTML += "<p>Error fetching chart image.</p>";
@@ -215,18 +198,14 @@ document.addEventListener("DOMContentLoaded", async () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ comments })
       });
-      if (!response.ok) {
-        throw new Error('Failed to fetch word cloud image');
-      }
+      if (!response.ok) throw new Error('Failed to fetch word cloud image');
       const blob = await response.blob();
       const imgURL = URL.createObjectURL(blob);
       const img = document.createElement('img');
       img.src = imgURL;
       img.style.width = '100%';
       img.style.marginTop = '20px';
-      // Append the image to the wordcloud-container div
-      const wordcloudContainer = document.getElementById('wordcloud-container');
-      wordcloudContainer.appendChild(img);
+      document.getElementById('wordcloud-container').appendChild(img);
     } catch (error) {
       console.error("Error fetching word cloud image:", error);
       outputDiv.innerHTML += "<p>Error fetching word cloud image.</p>";
@@ -240,18 +219,14 @@ document.addEventListener("DOMContentLoaded", async () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ sentiment_data: sentimentData })
       });
-      if (!response.ok) {
-        throw new Error('Failed to fetch trend graph image');
-      }
+      if (!response.ok) throw new Error('Failed to fetch trend graph image');
       const blob = await response.blob();
       const imgURL = URL.createObjectURL(blob);
       const img = document.createElement('img');
       img.src = imgURL;
       img.style.width = '100%';
       img.style.marginTop = '20px';
-      // Append the image to the trend-graph-container div
-      const trendGraphContainer = document.getElementById('trend-graph-container');
-      trendGraphContainer.appendChild(img);
+      document.getElementById('trend-graph-container').appendChild(img);
     } catch (error) {
       console.error("Error fetching trend graph image:", error);
       outputDiv.innerHTML += "<p>Error fetching trend graph image.</p>";
@@ -269,7 +244,7 @@ document.addEventListener("DOMContentLoaded", async () => {
           <div class="progress-bar">
             <div class="progress-fill" style="width: 33%;"></div>
           </div>
-          <p style="font-size: 0.9em; color: #999;">Processing {${fetchedComments.length}} comments across multiple batches...</p>
+          <p style="font-size: 0.9em; color: #999;">Processing ${fetchedComments.length} comments across multiple batches...</p>
         </div>
       </div>
     `;
@@ -284,268 +259,295 @@ document.addEventListener("DOMContentLoaded", async () => {
       const result = await response.json();
       const elapsed_time = ((Date.now() - start_time) / 1000).toFixed(2);
 
-      if (!response.ok) {
-        throw new Error(result.error || 'Summarization failed');
-      }
+      if (!response.ok) throw new Error(result.error || 'Summarization failed');
 
       const summaryText = result.summary || 'No summary was returned.';
       const metadata = result.processing_time_sec || elapsed_time;
-      
-      // Parse structured summary into sections
       const sections = parseSummaryIntoSections(summaryText);
-      
+
       summaryContainer.innerHTML = `
-        <div class="section">
-          <div class="section-title">📊 AI Comment Analysis Summary</div>
-          
-          <div class="summary-metadata">
-            <span class="meta-badge">✓ Completed</span>
-            <span class="meta-badge">📈 ${result.comment_count} comments</span>
-            <span class="meta-badge">⚙️ ${result.batch_count} batches</span>
-            <span class="meta-badge">⏱️ ${metadata}s</span>
+        <div class="ai-summary-wrapper">
+          <div class="ai-summary-header">
+            <span class="ai-summary-icon">✦</span>
+            <span class="ai-summary-title">AI Comment Analysis</span>
+            <div class="ai-summary-badges">
+              <span class="meta-badge badge-green">✓ Done</span>
+              <span class="meta-badge badge-blue">💬 ${result.comment_count} comments</span>
+              <span class="meta-badge badge-purple">⚙️ ${result.batch_count} batches</span>
+              <span class="meta-badge badge-gray">⏱ ${metadata}s</span>
+            </div>
           </div>
-          
-          ${sections.positive ? `
-          <div class="summary-section positive-section">
-            <h3 class="section-subtitle">✅ Video Strong Points</h3>
-            <div class="section-content">${sections.positive}</div>
+          <div class="ai-summary-body">
+            ${sections.positive ? `
+            <div class="ai-section positive-section">
+              <div class="ai-section-label">
+                <span class="ai-section-dot dot-green"></span>
+                <span>Strong Points</span>
+              </div>
+              <ul class="ai-list">${sections.positive}</ul>
+            </div>` : ''}
+            ${sections.critical ? `
+            <div class="ai-section critical-section">
+              <div class="ai-section-label">
+                <span class="ai-section-dot dot-red"></span>
+                <span>Critical Feedback</span>
+              </div>
+              <ul class="ai-list">${sections.critical}</ul>
+            </div>` : ''}
+            ${sections.themes ? `
+            <div class="ai-section themes-section">
+              <div class="ai-section-label">
+                <span class="ai-section-dot dot-yellow"></span>
+                <span>Sentiment Themes</span>
+              </div>
+              <ul class="ai-list">${sections.themes}</ul>
+            </div>` : ''}
+            ${sections.actions ? `
+            <div class="ai-section actions-section">
+              <div class="ai-section-label">
+                <span class="ai-section-dot dot-purple"></span>
+                <span>Recommended Actions</span>
+              </div>
+              <ul class="ai-list">${sections.actions}</ul>
+            </div>` : ''}
+            ${sections.metrics ? `
+            <div class="ai-section metrics-section">
+              <div class="ai-section-label">
+                <span class="ai-section-dot dot-teal"></span>
+                <span>Key Metrics</span>
+              </div>
+              <ul class="ai-list">${sections.metrics}</ul>
+            </div>` : ''}
           </div>
-          ` : ''}
-          
-          ${sections.critical ? `
-          <div class="summary-section critical-section">
-            <h3 class="section-subtitle">⚠️ Critical Issues & Feedback</h3>
-            <div class="section-content">${sections.critical}</div>
-          </div>
-          ` : ''}
-          
-          ${sections.themes ? `
-          <div class="summary-section themes-section">
-            <h3 class="section-subtitle">🎯 Main Sentiment Themes</h3>
-            <div class="section-content">${sections.themes}</div>
-          </div>
-          ` : ''}
-          
-          ${sections.actions ? `
-          <div class="summary-section actions-section">
-            <h3 class="section-subtitle">💡 Recommended Actions</h3>
-            <div class="section-content">${sections.actions}</div>
-          </div>
-          ` : ''}
-          
-          ${sections.metrics ? `
-          <div class="summary-section metrics-section">
-            <h3 class="section-subtitle">📈 Key Metrics</h3>
-            <div class="section-content">${sections.metrics}</div>
-          </div>
-          ` : ''}
-          
-          <div class="summary-full-text">
-            <details>
-              <summary>📄 Full Summary (Raw)</summary>
-              <pre style="background: #f5f5f5; padding: 10px; border-radius: 4px; overflow-x: auto;">${escapeHtml(summaryText)}</pre>
-            </details>
-          </div>
+          <details class="ai-raw-toggle">
+            <summary>View raw summary</summary>
+            <pre class="ai-raw-text">${escapeHtml(summaryText)}</pre>
+          </details>
         </div>
       `;
-      
-      // Add CSS styles if not already present
       addSummaryStyles();
     } catch (error) {
       console.error('Error fetching AI summary:', error);
       summaryContainer.innerHTML = `<p style="color: #e74c3c;">❌ Error generating summary: ${error.message}</p>`;
     }
   }
-  
+
   function parseSummaryIntoSections(text) {
-    const sections = {
-      positive: '',
-      critical: '',
-      themes: '',
-      actions: '',
-      metrics: ''
-    };
-    
-    // Parse POSITIVE ASPECTS
-    const positiveMatch = text.match(/##\s*POSITIVE\s*ASPECTS\s*\n([\s\S]*?)(?=##|\Z)/i);
-    if (positiveMatch) {
-      sections.positive = formatTextContent(positiveMatch[1]);
-    }
-    
-    // Parse CRITICAL ISSUES
-    const criticalMatch = text.match(/##\s*CRITICAL\s*ISSUES\s*\n([\s\S]*?)(?=##|\Z)/i);
-    if (criticalMatch) {
-      sections.critical = formatTextContent(criticalMatch[1]);
-    }
-    
-    // Parse SENTIMENT THEMES
-    const themesMatch = text.match(/##\s*SENTIMENT\s*THEMES\s*\n([\s\S]*?)(?=##|\Z)/i);
-    if (themesMatch) {
-      sections.themes = formatTextContent(themesMatch[1]);
-    }
-    
-    // Parse RECOMMENDED ACTIONS
-    const actionsMatch = text.match(/##\s*RECOMMENDED\s*ACTIONS\s*\n([\s\S]*?)(?=##|\Z)/i);
-    if (actionsMatch) {
-      sections.actions = formatTextContent(actionsMatch[1]);
-    }
-    
-    // Parse KEY METRICS
-    const metricsMatch = text.match(/##\s*KEY\s*METRICS\s*\n([\s\S]*?)(?=##|\Z)/i);
-    if (metricsMatch) {
-      sections.metrics = formatTextContent(metricsMatch[1]);
-    }
-    
+    const sections = { positive: '', critical: '', themes: '', actions: '', metrics: '' };
+    const positiveMatch = text.match(/##\s*POSITIVE\s*ASPECTS\s*\n([\s\S]*?)(?=##|$)/i);
+    if (positiveMatch) sections.positive = formatTextContent(positiveMatch[1]);
+    const criticalMatch = text.match(/##\s*CRITICAL\s*ISSUES\s*\n([\s\S]*?)(?=##|$)/i);
+    if (criticalMatch) sections.critical = formatTextContent(criticalMatch[1]);
+    const themesMatch = text.match(/##\s*SENTIMENT\s*THEMES\s*\n([\s\S]*?)(?=##|$)/i);
+    if (themesMatch) sections.themes = formatTextContent(themesMatch[1]);
+    const actionsMatch = text.match(/##\s*RECOMMENDED\s*ACTIONS\s*\n([\s\S]*?)(?=##|$)/i);
+    if (actionsMatch) sections.actions = formatTextContent(actionsMatch[1]);
+    const metricsMatch = text.match(/##\s*KEY\s*METRICS\s*\n([\s\S]*?)(?=##|$)/i);
+    if (metricsMatch) sections.metrics = formatTextContent(metricsMatch[1]);
     return sections;
   }
-  
+
   function formatTextContent(text) {
-    // Convert newlines to br tags and format bullet points
     return text
       .trim()
       .split('\n')
       .filter(line => line.trim())
       .map(line => {
-        if (line.trim().startsWith('-') || line.trim().startsWith('*')) {
-          return `<li>${line.trim().replace(/^[-*]\s*/, '')}</li>`;
+        const trimmed = line.trim();
+        // Skip any residual section headers
+        if (trimmed.startsWith('##')) return '';
+        if (trimmed.startsWith('-') || trimmed.startsWith('*')) {
+          const content = cleanMarkdown(trimmed.replace(/^[-*]\s*/, ''));
+          return `<li>${content}</li>`;
         }
-        return `<p>${escapeHtml(line)}</p>`;
+        return `<p>${cleanMarkdown(trimmed)}</p>`;
       })
-      .join('')
-      .replace(/<li>/g, '<li style="margin-left: 20px; margin-bottom: 5px;">')
-      .replace(/(<li>.*<\/li>)/s, '<ul style="list-style: disc; padding-left: 20px;">$1</ul>');
+      .filter(Boolean)
+      .join('');
   }
-  
+
+  function cleanMarkdown(text) {
+    return escapeHtml(text)
+      // Bold **text** or __text__
+      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+      .replace(/__(.+?)__/g, '<strong>$1</strong>')
+      // Italic *text* or _text_
+      .replace(/\*(.+?)\*/g, '<em>$1</em>')
+      .replace(/_(.+?)_/g, '<em>$1</em>')
+      // Inline code
+      .replace(/`(.+?)`/g, '<code>$1</code>');
+  }
+
   function escapeHtml(text) {
-    const map = {
-      '&': '&amp;',
-      '<': '&lt;',
-      '>': '&gt;',
-      '"': '&quot;',
-      "'": '&#039;'
-    };
+    const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
     return text.replace(/[&<>"']/g, m => map[m]);
   }
-  
+
   function addSummaryStyles() {
     const styleId = 'summary-styles';
     if (document.getElementById(styleId)) return;
-    
     const style = document.createElement('style');
     style.id = styleId;
     style.textContent = `
-      .summary-metadata {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 10px;
-        margin: 15px 0;
-        padding: 10px;
-        background: #f0f0f0;
-        border-radius: 6px;
-      }
-      
-      .meta-badge {
-        background: #3498db;
-        color: white;
-        padding: 5px 10px;
-        border-radius: 20px;
-        font-size: 0.85em;
-        font-weight: bold;
-      }
-      
-      .summary-section {
-        margin: 20px 0;
-        padding: 15px;
-        border-left: 4px solid #3498db;
-        background: #f9f9f9;
-        border-radius: 4px;
-      }
-      
-      .positive-section {
-        border-left-color: #27ae60;
-        background: #f0fdf4;
-      }
-      
-      .critical-section {
-        border-left-color: #e74c3c;
-        background: #fef2f2;
-      }
-      
-      .themes-section {
-        border-left-color: #f39c12;
-        background: #fffbf0;
-      }
-      
-      .actions-section {
-        border-left-color: #9b59b6;
-        background: #faf5ff;
-      }
-      
-      .metrics-section {
-        border-left-color: #1abc9c;
-        background: #f0fffe;
-      }
-      
-      .section-subtitle {
-        margin: 0 0 10px 0;
-        font-size: 1.1em;
-        font-weight: bold;
-        color: #2c3e50;
-      }
-      
-      .section-content {
-        font-size: 0.95em;
-        line-height: 1.6;
-      }
-      
-      .section-content p {
-        margin: 8px 0;
-        color: #333;
-      }
-      
-      .summary-full-text {
-        margin-top: 20px;
-        padding-top: 15px;
-        border-top: 1px solid #ddd;
-      }
-      
-      .summary-full-text summary {
-        cursor: pointer;
-        font-weight: bold;
-        color: #3498db;
-        user-select: none;
-      }
-      
-      .summary-full-text summary:hover {
-        color: #2980b9;
-      }
-      
-      .progress-container {
-        text-align: center;
-      }
-      
-      .progress-bar {
-        width: 100%;
-        height: 6px;
-        background: #ecf0f1;
+      /* ── Wrapper ── */
+      .ai-summary-wrapper {
+        border: 1px solid #2e2e2e;
         border-radius: 10px;
         overflow: hidden;
-        margin: 10px 0;
+        margin: 14px 0;
+        background: #1c1c1e;
       }
-      
-      .progress-fill {
-        height: 100%;
-        background: linear-gradient(90deg, #3498db, #2ecc71);
-        animation: progress 1.5s ease-in-out infinite;
+
+      /* ── Header bar ── */
+      .ai-summary-header {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 8px;
+        padding: 12px 14px;
+        background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+        border-bottom: 1px solid #2e2e3e;
       }
-      
-      @keyframes progress {
-        0%, 100% { width: 33%; }
-        50% { width: 66%; }
+      .ai-summary-icon {
+        font-size: 1em;
+        color: #7c6af7;
       }
+      .ai-summary-title {
+        font-size: 0.95em;
+        font-weight: 700;
+        color: #e0e0e0;
+        letter-spacing: 0.02em;
+        flex: 1;
+      }
+      .ai-summary-badges {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+      .meta-badge {
+        padding: 3px 9px;
+        border-radius: 20px;
+        font-size: 0.75em;
+        font-weight: 600;
+        letter-spacing: 0.01em;
+      }
+      .badge-green  { background: #1a3d2b; color: #4caf77; border: 1px solid #2d5c3e; }
+      .badge-blue   { background: #0d2a40; color: #4ab0e8; border: 1px solid #1a4a6e; }
+      .badge-purple { background: #25183d; color: #a07af5; border: 1px solid #3d2860; }
+      .badge-gray   { background: #252525; color: #aaaaaa; border: 1px solid #363636; }
+
+      /* ── Body ── */
+      .ai-summary-body {
+        padding: 10px 14px 6px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      /* ── Individual section cards ── */
+      .ai-section {
+        border-radius: 7px;
+        padding: 10px 13px;
+        border: 1px solid transparent;
+      }
+      .ai-section-label {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        font-size: 0.78em;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: #aaaaaa;
+        margin-bottom: 7px;
+      }
+      .ai-section-dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        flex-shrink: 0;
+      }
+      .dot-green  { background: #4caf77; }
+      .dot-red    { background: #e05c5c; }
+      .dot-yellow { background: #f0b429; }
+      .dot-purple { background: #a07af5; }
+      .dot-teal   { background: #2ec4b6; }
+
+      .positive-section { background: #111d15; border-color: #1e3a24; }
+      .critical-section { background: #1d1111; border-color: #3a1e1e; }
+      .themes-section   { background: #1d1a0f; border-color: #3a320f; }
+      .actions-section  { background: #18112a; border-color: #30204a; }
+      .metrics-section  { background: #0f1d1c; border-color: #163432; }
+
+      /* ── List ── */
+      .ai-list {
+        margin: 0;
+        padding: 0 0 0 4px;
+        list-style: none;
+      }
+      .ai-list li {
+        position: relative;
+        padding: 4px 0 4px 16px;
+        font-size: 0.88em;
+        line-height: 1.55;
+        color: #d0d0d0;
+        border-bottom: 1px solid rgba(255,255,255,0.04);
+      }
+      .ai-list li:last-child { border-bottom: none; }
+      .ai-list li::before {
+        content: '›';
+        position: absolute;
+        left: 0;
+        color: #666;
+        font-size: 1em;
+      }
+      .ai-list p {
+        margin: 4px 0;
+        font-size: 0.88em;
+        line-height: 1.55;
+        color: #d0d0d0;
+      }
+      .ai-list strong { color: #ffffff; }
+      .ai-list em     { color: #b0c4de; font-style: italic; }
+      .ai-list code   { background: #2a2a2a; padding: 1px 5px; border-radius: 3px; font-size: 0.85em; }
+
+      /* ── Raw toggle ── */
+      .ai-raw-toggle {
+        margin: 8px 14px 14px;
+        border-radius: 6px;
+        border: 1px solid #2e2e2e;
+        overflow: hidden;
+      }
+      .ai-raw-toggle summary {
+        cursor: pointer;
+        padding: 8px 12px;
+        font-size: 0.78em;
+        color: #666;
+        user-select: none;
+        background: #1a1a1a;
+        list-style: none;
+      }
+      .ai-raw-toggle summary:hover { color: #999; }
+      .ai-raw-text {
+        margin: 0;
+        padding: 10px 12px;
+        font-size: 0.78em;
+        line-height: 1.5;
+        color: #888;
+        background: #141414;
+        white-space: pre-wrap;
+        word-break: break-word;
+        overflow-x: auto;
+        border-top: 1px solid #2e2e2e;
+      }
+
+      /* ── Progress ── */
+      .progress-container { text-align: center; padding: 16px; }
+      .progress-bar { width: 100%; height: 5px; background: #2a2a2a; border-radius: 10px; overflow: hidden; margin: 10px 0; }
+      .progress-fill { height: 100%; background: linear-gradient(90deg, #7c6af7, #2ecc71); animation: ai-progress 1.5s ease-in-out infinite; }
+      @keyframes ai-progress { 0%, 100% { width: 30%; margin-left: 0; } 50% { width: 60%; margin-left: 20%; } }
     `;
     document.head.appendChild(style);
   }
-    }
-  }
-});
+
+}); // END DOMContentLoaded
