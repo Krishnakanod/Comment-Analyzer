@@ -2,9 +2,23 @@
 
 document.addEventListener("DOMContentLoaded", async () => {
   const outputDiv = document.getElementById("output");
-  const API_KEY = 'AIzaSyBogfaYZY5cmUFgSjAJhZClCc8Z7xlQ-3o';
   const API_URL = 'http://localhost:5000';
   let fetchedComments = [];
+
+  // HARDCODED YOUTUBE API KEY
+  // Replace the string below with your actual YouTube Data v3 API key
+  let API_KEY = '' ;
+  try {
+    outputDiv.innerHTML = `<p style="color:#aaa;"> Loading config...</p>`;
+    const configRes = await fetch(`${API_URL}/config`);
+    if (!configRes.ok) throw new Error(`Backend responded with status ${configRes.status}`);
+    const config = await configRes.json();
+    API_KEY = config.youtube_api_key || '';
+    if (!API_KEY) throw new Error('YOUTUBE_API_KEY is missing in server .env');
+  } catch (err) {
+    outputDiv.innerHTML = `<p style="color:#e74c3c;"> Could not load config from backend: ${err.message}<br><small>Make sure your Flask server is running at ${API_URL}</small></p>`;
+    return;
+  }
 
   // Get the current tab's URL
   chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
@@ -29,6 +43,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         const sentimentCounts = { "1": 0, "0": 0, "-1": 0 };
         const sentimentData = [];
         const totalSentimentScore = predictions.reduce((sum, item) => sum + parseInt(item.sentiment), 0);
+        
         predictions.forEach((item) => {
           sentimentCounts[item.sentiment]++;
           sentimentData.push({
@@ -78,7 +93,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         outputDiv.innerHTML += `
           <div class="section">
             <div class="section-title">Sentiment Analysis Results</div>
-            <p>See the pie chart below for sentiment distribution.</p>
+            <p>Pie chart for comment sentiment distribution.</p>
             <div id="chart-container"></div>
           </div>`;
 
@@ -129,8 +144,19 @@ document.addEventListener("DOMContentLoaded", async () => {
     let pageToken = "";
     try {
       while (true) {
-        const response = await fetch(`https://www.googleapis.com/youtube/v3/commentThreads?part=snippet&videoId=${videoId}&maxResults=100&pageToken=${pageToken}&key=${API_KEY}`);
+        const url = `https://www.googleapis.com/youtube/v3/commentThreads?part=snippet&videoId=${videoId}&maxResults=100&pageToken=${pageToken}&key=${API_KEY}`;
+        const response = await fetch(url);
         const data = await response.json();
+
+        // Surface any YouTube API errors clearly
+        if (data.error) {
+          const msg = data.error.message || JSON.stringify(data.error);
+          const code = data.error.code || response.status;
+          outputDiv.innerHTML += `<p style="color:#e74c3c;">❌ YouTube API error (${code}): ${msg}</p>`;
+          console.error("YouTube API error:", data.error);
+          break;
+        }
+
         if (data.items) {
           data.items.forEach(item => {
             const commentText = item.snippet.topLevelComment.snippet.textOriginal;
@@ -140,11 +166,12 @@ document.addEventListener("DOMContentLoaded", async () => {
           });
         }
         pageToken = data.nextPageToken;
+        // Break the loop when there are no more pages of comments
         if (!pageToken) break;
       }
     } catch (error) {
       console.error("Error fetching comments:", error);
-      outputDiv.innerHTML += "<p>Error fetching comments.</p>";
+      outputDiv.innerHTML += `<p style="color:#e74c3c;">❌ Network error fetching comments: ${error.message}</p>`;
     }
     fetchedComments = comments;
     return comments;
@@ -240,11 +267,11 @@ document.addEventListener("DOMContentLoaded", async () => {
     summaryContainer.innerHTML = `
       <div class="section">
         <div class="progress-container">
-          <p>⏳ Generating AI summary...</p>
+          <p> Generating summary...</p>
           <div class="progress-bar">
             <div class="progress-fill" style="width: 33%;"></div>
           </div>
-          <p style="font-size: 0.9em; color: #999;">Processing ${fetchedComments.length} comments across multiple batches...</p>
+          <p style="font-size: 0.9em; color: #999;">Processing ${fetchedComments.length} comments...</p>
         </div>
       </div>
     `;
@@ -261,70 +288,94 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       if (!response.ok) throw new Error(result.error || 'Summarization failed');
 
-      const summaryText = result.summary || 'No summary was returned.';
-      const metadata = result.processing_time_sec || elapsed_time;
-      const sections = parseSummaryIntoSections(summaryText);
+      // Sanitize the summary text to remove non-English characters if needed
+      const sanitizeText = (text) => {
+        if (!text) return '';
+        // Remove non-printable characters and limit to basic ASCII/Unicode ranges
+        // Safely removes invisible control characters but keeps emojis, newlines, and all languages
+        //made change
+        return text.replace(/[\x00-\x09\x0B-\x1F\x7F]/g, '');
+      };
 
-      summaryContainer.innerHTML = `
-        <div class="ai-summary-wrapper">
-          <div class="ai-summary-header">
-            <span class="ai-summary-icon">✦</span>
-            <span class="ai-summary-title">AI Comment Analysis</span>
-            <div class="ai-summary-badges">
-              <span class="meta-badge badge-green">✓ Done</span>
-              <span class="meta-badge badge-blue">💬 ${result.comment_count} comments</span>
-              <span class="meta-badge badge-purple">⚙️ ${result.batch_count} batches</span>
-              <span class="meta-badge badge-gray">⏱ ${metadata}s</span>
+      const summaryText = sanitizeText(result.summary) || 'No summary was returned.';
+      const metadata = result.processing_time_sec || elapsed_time;
+
+      // Improved fallback mechanism for parsing sections
+      let sections;
+      try {
+        sections = parseSummaryIntoSections(summaryText);
+      } catch (parseError) {
+        console.warn('Failed to parse summary sections:', parseError);
+        sections = { positive: '', critical: '', themes: '', actions: '', metrics: '' };
+      }
+
+      // Ensure we still render something even if parsing fails completely
+      if (!sections.positive && !sections.critical && !sections.themes && !sections.actions && !sections.metrics) {
+        summaryContainer.innerHTML = `
+
+            <div class="ai-summary-body">
+              <div class="ai-section">
+                <div class="ai-section-label">
+                  <span class="ai-section-dot dot-teal"></span>
+                  <span>Summary</span>
+                </div>
+                <p>${sanitizeText(summaryText)}</p>
+              </div>
             </div>
           </div>
-          <div class="ai-summary-body">
-            ${sections.positive ? `
-            <div class="ai-section positive-section">
-              <div class="ai-section-label">
-                <span class="ai-section-dot dot-green"></span>
-                <span>Strong Points</span>
-              </div>
-              <ul class="ai-list">${sections.positive}</ul>
-            </div>` : ''}
-            ${sections.critical ? `
-            <div class="ai-section critical-section">
-              <div class="ai-section-label">
-                <span class="ai-section-dot dot-red"></span>
-                <span>Critical Feedback</span>
-              </div>
-              <ul class="ai-list">${sections.critical}</ul>
-            </div>` : ''}
-            ${sections.themes ? `
-            <div class="ai-section themes-section">
-              <div class="ai-section-label">
-                <span class="ai-section-dot dot-yellow"></span>
-                <span>Sentiment Themes</span>
-              </div>
-              <ul class="ai-list">${sections.themes}</ul>
-            </div>` : ''}
-            ${sections.actions ? `
-            <div class="ai-section actions-section">
-              <div class="ai-section-label">
-                <span class="ai-section-dot dot-purple"></span>
-                <span>Recommended Actions</span>
-              </div>
-              <ul class="ai-list">${sections.actions}</ul>
-            </div>` : ''}
-            ${sections.metrics ? `
-            <div class="ai-section metrics-section">
-              <div class="ai-section-label">
-                <span class="ai-section-dot dot-teal"></span>
-                <span>Key Metrics</span>
-              </div>
-              <ul class="ai-list">${sections.metrics}</ul>
-            </div>` : ''}
+        `;
+      } else {
+        summaryContainer.innerHTML = `
+          <div class="ai-summary-wrapper">
+            <div class="ai-summary-header">
+              <span class="ai-summary-icon"></span>
+              <span class="ai-summary-title">AI Comment Analysis</span>
+            </div>
+            <div class="ai-summary-body">
+              ${sections.positive ? `
+              <div class="ai-section positive-section">
+                <div class="ai-section-label">
+                  <span class="ai-section-dot dot-green"></span>
+                  <span>Strong Points</span>
+                </div>
+                <ul class="ai-list">${sections.positive}</ul>
+              </div>` : ''}
+              ${sections.critical ? `
+              <div class="ai-section critical-section">
+                <div class="ai-section-label">
+                  <span class="ai-section-dot dot-red"></span>
+                  <span>Critical Feedback</span>
+                </div>
+                <ul class="ai-list">${sections.critical}</ul>
+              </div>` : ''}
+              ${sections.themes ? `
+              <div class="ai-section themes-section">
+                <div class="ai-section-label">
+                  <span class="ai-section-dot dot-yellow"></span>
+                  <span>Sentiment Themes</span>
+                </div>
+                <ul class="ai-list">${sections.themes}</ul>
+              </div>` : ''}
+              ${sections.actions ? `
+              <div class="ai-section actions-section">
+                <div class="ai-section-label">
+                  <span class="ai-section-dot dot-purple"></span>
+                  <span>Recommended Actions</span>
+                </div>
+                <ul class="ai-list">${sections.actions}</ul>
+              </div>` : ''}
+              ${sections.metrics ? `
+              <div class="ai-section metrics-section">
+                <div class="ai-section-label">
+                  <span class="ai-section-dot dot-teal"></span>
+                  <span>Key Metrics</span>
+                </div>
+                <ul class="ai-list">${sections.metrics}</ul>
+              </div>` : ''}
+            </div>
           </div>
-          <details class="ai-raw-toggle">
-            <summary>View raw summary</summary>
-            <pre class="ai-raw-text">${escapeHtml(summaryText)}</pre>
-          </details>
-        </div>
-      `;
+        `;
+      }
       addSummaryStyles();
     } catch (error) {
       console.error('Error fetching AI summary:', error);
@@ -333,28 +384,29 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   function parseSummaryIntoSections(text) {
+    const sanitizedText = sanitizeText(text);
     const sections = { positive: '', critical: '', themes: '', actions: '', metrics: '' };
-    const positiveMatch = text.match(/##\s*POSITIVE\s*ASPECTS\s*\n([\s\S]*?)(?=##|$)/i);
+    const positiveMatch = sanitizedText.match(/##\s*POSITIVE\s*ASPECTS\s*\n([\s\S]*?)(?=##|$)/i);
     if (positiveMatch) sections.positive = formatTextContent(positiveMatch[1]);
-    const criticalMatch = text.match(/##\s*CRITICAL\s*ISSUES\s*\n([\s\S]*?)(?=##|$)/i);
+    const criticalMatch = sanitizedText.match(/##\s*CRITICAL\s*ISSUES\s*\n([\s\S]*?)(?=##|$)/i);
     if (criticalMatch) sections.critical = formatTextContent(criticalMatch[1]);
-    const themesMatch = text.match(/##\s*SENTIMENT\s*THEMES\s*\n([\s\S]*?)(?=##|$)/i);
+    const themesMatch = sanitizedText.match(/##\s*SENTIMENT\s*THEMES\s*\n([\s\S]*?)(?=##|$)/i);
     if (themesMatch) sections.themes = formatTextContent(themesMatch[1]);
-    const actionsMatch = text.match(/##\s*RECOMMENDED\s*ACTIONS\s*\n([\s\S]*?)(?=##|$)/i);
+    const actionsMatch = sanitizedText.match(/##\s*RECOMMENDED\s*ACTIONS\s*\n([\s\S]*?)(?=##|$)/i);
     if (actionsMatch) sections.actions = formatTextContent(actionsMatch[1]);
-    const metricsMatch = text.match(/##\s*KEY\s*METRICS\s*\n([\s\S]*?)(?=##|$)/i);
+    const metricsMatch = sanitizedText.match(/##\s*KEY\s*METRICS\s*\n([\s\S]*?)(?=##|$)/i);
     if (metricsMatch) sections.metrics = formatTextContent(metricsMatch[1]);
     return sections;
   }
 
   function formatTextContent(text) {
+    if (!text) return '';
     return text
       .trim()
       .split('\n')
       .filter(line => line.trim())
       .map(line => {
         const trimmed = line.trim();
-        // Skip any residual section headers
         if (trimmed.startsWith('##')) return '';
         if (trimmed.startsWith('-') || trimmed.startsWith('*')) {
           const content = cleanMarkdown(trimmed.replace(/^[-*]\s*/, ''));
@@ -368,19 +420,21 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   function cleanMarkdown(text) {
     return escapeHtml(text)
-      // Bold **text** or __text__
       .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
       .replace(/__(.+?)__/g, '<strong>$1</strong>')
-      // Italic *text* or _text_
       .replace(/\*(.+?)\*/g, '<em>$1</em>')
       .replace(/_(.+?)_/g, '<em>$1</em>')
-      // Inline code
       .replace(/`(.+?)`/g, '<code>$1</code>');
   }
 
   function escapeHtml(text) {
     const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
     return text.replace(/[&<>"']/g, m => map[m]);
+  }
+  // made change at 450
+  function sanitizeText(text) {
+    if (!text) return '';
+     return text.replace(/[\x00-\x09\x0B-\x1F\x7F]/g, '');
   }
 
   function addSummaryStyles() {
@@ -495,16 +549,14 @@ document.addEventListener("DOMContentLoaded", async () => {
       }
       .ai-list li:last-child { border-bottom: none; }
       .ai-list li::before {
-        content: '›';
-        position: absolute;
-        left: 0;
-        color: #666;
-        font-size: 1em;
+            content: '●';
+            color: #7c6af7;
+            font-size: 0.65em;
       }
       .ai-list p {
         margin: 4px 0;
-        font-size: 0.88em;
-        line-height: 1.55;
+        font-size: 1em;
+        line-height: 2;
         color: #d0d0d0;
       }
       .ai-list strong { color: #ffffff; }

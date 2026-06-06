@@ -41,6 +41,7 @@ from backend.ai.summarizer import summarize_comments
 
 load_dotenv()
 
+
 MLFLOW_TRACKING_URI = os.getenv('MLFLOW_TRACKING_URI', 'http://ec2-13-53-42-235.eu-north-1.compute.amazonaws.com:5000/')
 MLFLOW_MODEL_NAME = 'yt_chrome_plugin_model'
 MLFLOW_MODEL_VERSION = '1'
@@ -48,6 +49,14 @@ TFIDF_VECTORIZER_PATH = './tfidf_vectorizer.pkl'
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
+
+
+
+@app.route('/config', methods=['GET'])
+def get_config():
+    return jsonify({
+        'youtube_api_key': os.getenv('YOUTUBE_API_KEY')
+    })
 
 # Define the preprocessing function
 def preprocess_comment(comment):

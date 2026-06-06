@@ -5,26 +5,33 @@
   <style>
     /* Dark Theme */
     body {
-      font-family: Arial, sans-serif;
+      font-family: "Segoe UI", sans-serif;
       padding: 10px;
-      background-color: #1e1e1e;
-      color: #f1f1f1;
+      background: #0f172a;
+      color: #f8fafc;
       margin: 0;
       box-sizing: border-box;
-      width: 320px; /* Set a width that fits the Chrome extension popup */
+      width: 500px; /* Set a width that fits the Chrome extension popup */
     }
     h1 {
-      font-size: 20px;
-      color: #ffffff;
-    }
-    .section {
-      margin-bottom: 15px;
-    }
+    font-size: 24px;
+    font-weight: 700;
+    text-align: center;
+    margin-bottom: 20px;
+    color: white;
+}
+   .section {
+    background: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 14px;
+    padding: 16px;
+    margin-bottom: 16px;
+}
     .section-title {
       font-weight: bold;
       color: #0099ff;
       margin-top: 10px;
-      font-size: 16px;
+      font-size: 15px;
     }
     .comment-list {
       list-style: none;
@@ -47,29 +54,27 @@
     }
     /* Metrics Styling */
     .metrics-container {
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: space-between;
-    }
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+}
     .metric {
-      width: 48%;
+      width: 75%;
       background-color: #444;
-      margin-bottom: 10px;
-      padding: 10px;
-      border-radius: 4px;
+      margin-bottom: 12px;
+      padding: 12px;
+      border-radius: 3px;
       text-align: center;
       box-sizing: border-box;
     }
     .metric-title {
-      font-size: 12px;
+      font-size: 15px;
       color: #cccccc;
     }
-    .metric-value {
-      font-size: 22px;
-      font-weight: bold;
-      color: #ffffff;
-      margin-top: 5px;
-    }
+   .metric-value {
+    font-size: 15px;
+    font-weight: 700;
+}
     .primary-button {
       width: 100%;
       padding: 12px 14px;
@@ -84,11 +89,13 @@
     .primary-button:hover {
       background-color: #007acc;
     }
-    .summary-text {
-      margin-top: 12px;
-      line-height: 1.5;
-      white-space: pre-wrap;
-    }
+   .summary-text {
+    background: #111827;
+    border-radius: 12px;
+    padding: 16px;
+    line-height: 1.8;
+    border: 1px solid #374151;
+}
   </style>
 </head>
 <body>

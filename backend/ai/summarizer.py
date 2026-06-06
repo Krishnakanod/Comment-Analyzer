@@ -92,6 +92,10 @@ def get_summary_prompt(batch_text: str) -> str:
         "List 3-4 actionable recommendations for the creator.\n\n"
         "## KEY METRICS\n"
         "main complaint topic, engagement level.\n\n"
+        "## FAQ\n"
+        "Frequently asked questions to youtuber\n\n"
+        "Ensure that points are labelled in each section with number (1,2,3) so on even in key metrics \n\n"
+        "Do not use inverted or anything in result if you want highlight any point or phrase you can bold them with proper spacing \n\n"
         "Keep responses concise and actionable. Do not include original comment text."
     )
 
@@ -166,7 +170,22 @@ def summarize_batch(comments: List, provider: str, model: str, api_key: str, bat
 def combine_summaries(batch_summaries: List[str], provider: str, model: str, api_key: str) -> str:
     prompt = (
         "Combine the following batch summaries into one cohesive final summary for a YouTube video owner. "
-        "Keep the tone concise and actionable.\n\n" + "\n\n".join(batch_summaries)
+        "RESPOND WITH THIS EXACT STRUCTURE:\n\n"
+        "## POSITIVE ASPECTS\n"
+        "List key strengths and praise mentioned.\n\n"
+        "## CRITICAL ISSUES\n"
+        "List main problems, frustrations, or complaints.\n\n"
+        "## SENTIMENT THEMES\n"
+        "List 3-4 major sentiment themes with brief descriptions.\n\n"
+        "## RECOMMENDED ACTIONS\n"
+        "List 3-4 actionable recommendations for the creator.\n\n"
+        "## KEY METRICS\n"
+        "main complaint topic, engagement level.\n\n"
+        "## FAQ\n"
+        "Frequently asked questions to youtuber\n\n"
+        "Ensure that points are labelled in each section with number (1,2,3) so on even in key metrics \n\n"
+        "Do not use inverted or anything in result if you want highlight any point or phrase you can bold them with proper spacing \n\n"
+        "Keep responses concise and actionable. Do not include original comment text.", "\n\n" + "\n\n".join(batch_summaries)
     )
     if provider == 'openai':
         return retry_with_backoff(openai_summary, prompt, model, api_key)
