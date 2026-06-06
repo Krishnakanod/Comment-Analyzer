@@ -38,11 +38,12 @@ def load_params(params_path: str) -> dict:
         logger.error('Unexpected error: %s', e)
         raise
 
-def load_data(data_url: str) -> pd.DataFrame:
-    """Load data from a CSV file."""
+def load_data(data_path: str) -> pd.DataFrame:
+    """Load data from a CSV/ZIP file locally."""
     try:
-        df = pd.read_csv(data_url)
-        logger.debug('Data loaded from %s', data_url)
+        # Added compression='zip' to handle the zipped CSV directly
+        df = pd.read_csv(data_path, compression='zip')
+        logger.debug('Data loaded from %s', data_path)
         return df
     except pd.errors.ParserError as e:
         logger.error('Failed to parse the CSV file: %s', e)
@@ -93,8 +94,8 @@ def main():
         params = load_params(params_path=os.path.join(os.path.dirname(os.path.abspath(__file__)), '../../params.yaml'))
         test_size = params['data_ingestion']['test_size']
         
-        # Load data from the specified URL (Fixed Unicode Error by adding 'r' prefix)
-        df = load_data(data_url=r'https://github.com/Krishnakanod/Comment-Analyzer/blob/master/raw_data/youtube_comments_raw1.zip')
+        # Load data directly from the local ZIP file in the repository
+        df = load_data(data_path='raw_data/youtube_comments_raw1.zip')
         
         # Preprocess the data
         final_df = preprocess_data(df)
@@ -102,7 +103,7 @@ def main():
         # Split the data into training and testing sets
         train_data, test_data = train_test_split(final_df, test_size=test_size, random_state=42)
         
-        # Save the split datasets and create the raw folder if it doesn't exist (Fixed Syntax Error)
+        # Save the split datasets and create the raw folder if it doesn't exist
         save_data(train_data, test_data, data_path=os.path.join(os.path.dirname(os.path.abspath(__file__)), '../../data'))
         
     except Exception as e:
