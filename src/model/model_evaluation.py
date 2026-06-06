@@ -157,8 +157,7 @@ def main():
             vectorizer = load_vectorizer(os.path.join(root_dir, 'tfidf_vectorizer.pkl'))
 
             # Load test data for signature inference
-            test_data = load_data(os.path.join(root_dir, 'data/interim/test_processed.csv'))
-
+            test_data = load_data('https://raw.githubusercontent.com/Krishnakanod/Comment-Analyzer/master/raw_data/data_processed/test_processed_1.csv')
             # Prepare test data
             X_test_tfidf = vectorizer.transform(test_data['CommentText'].values)
             y_test = test_data['Sentiment'].values

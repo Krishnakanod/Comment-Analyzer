@@ -141,7 +141,7 @@ def main():
         num_leaves = params['model_building']['num_leaves']
 
         # Load the preprocessed training data from the interim directory
-        train_data = load_data(os.path.join(root_dir, 'data/interim/train_processed.csv'))
+        train_data = load_data('https://raw.githubusercontent.com/Krishnakanod/Comment-Analyzer/master/raw_data/data_processed/train_processed_1.csv')
 
         # Apply TF-IDF feature engineering on training data
         X_train_tfidf, y_train = apply_tfidf(train_data, max_features, ngram_range)
