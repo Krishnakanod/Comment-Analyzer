@@ -129,6 +129,7 @@ Pygments==2.18.0
 pygtrie==2.5.0
 pyparsing==3.1.2
 python-dateutil==2.9.0.post0
+python-dotenv==1.0.1
 pytz==2024.1
 PyYAML==6.0.1
 querystring-parser==1.2.4
