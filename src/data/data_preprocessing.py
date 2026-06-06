@@ -92,8 +92,8 @@ def main():
         logger.debug("Starting data preprocessing...")
         
         # Fetch the data from data/raw
-        train_data = pd.read_csv('./data/raw/train.csv')
-        test_data = pd.read_csv('./data/raw/test.csv')
+        train_data = pd.read_csv('./data/raw/train.csv',engine='python')
+        test_data = pd.read_csv('./data/raw/test.csv',engine='python')
         logger.debug('Data loaded successfully')
 
         # Preprocess the data
