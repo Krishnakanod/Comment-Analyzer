@@ -40,7 +40,7 @@ def load_model_info(file_path: str) -> dict:
         logger.error('File not found: %s', file_path)
         raise
     except Exception as e:
-        logger.error('Unexpected error occurred while loading the model info: %s', e)
+        logger.error('Unexpected error occurred while loading  model info: %s', e)
         raise
 
 def register_model(model_name: str, model_info: dict):
