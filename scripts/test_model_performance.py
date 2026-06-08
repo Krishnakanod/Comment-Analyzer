@@ -12,12 +12,17 @@ mlflow.set_tracking_uri("http://ec2-13-53-42-235.eu-north-1.compute.amazonaws.co
 ])
 def test_model_performance(model_name, stage, holdout_data_path, vectorizer_path):
     try:
+        
         # Load the model from MLflow
         client = mlflow.tracking.MlflowClient()
-        latest_version_info = client.get_latest_versions(model_name, stages=[stage])
-        latest_version = latest_version_info.version if latest_version_info else None
+        latest_versions_list = client.get_latest_versions(model_name, stages=[stage])
 
-        assert latest_version is not None, f"No model found in the '{stage}' stage for '{model_name}'"
+        # Safely check if the list is empty before trying to access index
+        if not latest_versions_list:
+            pytest.fail(f"No model found in the '{stage}' stage for '{model_name}'")
+
+        # Extract the specific version string from the first object in the list
+        latest_version = latest_versions_list.version
 
         model_uri = f"models:/{model_name}/{latest_version}"
         model = mlflow.pyfunc.load_model(model_uri)
