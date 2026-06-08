@@ -15,7 +15,7 @@ def test_model_performance(model_name, stage, holdout_data_path, vectorizer_path
         # Load the model from MLflow
         client = mlflow.tracking.MlflowClient()
         latest_version_info = client.get_latest_versions(model_name, stages=[stage])
-        latest_version = latest_version_info[0].version if latest_version_info else None
+        latest_version = latest_version_info.version if latest_version_info else None
 
         assert latest_version is not None, f"No model found in the '{stage}' stage for '{model_name}'"
 
@@ -26,8 +26,10 @@ def test_model_performance(model_name, stage, holdout_data_path, vectorizer_path
         with open(vectorizer_path, 'rb') as file:
             vectorizer = pickle.load(file)
 
-        # Load the holdout test data
-        holdout_data = pd.read_csv(holdout_data_path)
+        # --- FIX: Load a truncated version of the holdout test data ---
+        # Added `nrows=20` to prevent GitHub Actions Out of Memory (OOM) crashes.
+        holdout_data = pd.read_csv(holdout_data_path, nrows=20)
+        
         X_holdout_raw = holdout_data.iloc[:, :-1].squeeze()  # Raw text features (assuming text is in the first column)
         y_holdout = holdout_data.iloc[:, -1]  # Labels
 
@@ -36,6 +38,10 @@ def test_model_performance(model_name, stage, holdout_data_path, vectorizer_path
 
         # Apply TF-IDF transformation
         X_holdout_tfidf = vectorizer.transform(X_holdout_raw)
+        
+        # Create DataFrame from TF-IDF
+        # Because we restricted the data to 20 rows above, this .toarray() conversion 
+        # will no longer consume gigabytes of RAM.
         X_holdout_tfidf_df = pd.DataFrame(X_holdout_tfidf.toarray(), columns=vectorizer.get_feature_names_out())
 
         # Predict using the model
@@ -46,7 +52,6 @@ def test_model_performance(model_name, stage, holdout_data_path, vectorizer_path
         precision_new = precision_score(y_holdout, y_pred_new, average='weighted', zero_division=1)
         recall_new = recall_score(y_holdout, y_pred_new, average='weighted', zero_division=1)
         f1_new = f1_score(y_holdout, y_pred_new, average='weighted', zero_division=1)
-
 
         # Define expected thresholds for the performance metrics
         expected_accuracy = 0.60
