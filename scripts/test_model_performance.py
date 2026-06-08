@@ -22,7 +22,7 @@ def test_model_performance(model_name, stage, holdout_data_path, vectorizer_path
             pytest.fail(f"No model found in the '{stage}' stage for '{model_name}'")
 
         # Extract the specific version string from the first object in the list
-        latest_version = latest_versions_list.version
+        latest_version = latest_versions_list[0].version
 
         model_uri = f"models:/{model_name}/{latest_version}"
         model = mlflow.pyfunc.load_model(model_uri)
