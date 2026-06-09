@@ -1,0 +1,14 @@
+# Ignore virtual environments
+venv/
+.venv/
+env/
+
+# Ignore Python cache files
+__pycache__/
+*.pyc
+
+# Ignore git history
+.git/
+
+# Ignore your environment variables file (security best practice)
+.env

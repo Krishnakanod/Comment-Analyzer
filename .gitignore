@@ -93,3 +93,7 @@ target/
 
 .early.coverage
 experiment_info.json
+
+.claude/
+CLAUDE.MD
+raw_data/youtube_comments_raw1.csv
