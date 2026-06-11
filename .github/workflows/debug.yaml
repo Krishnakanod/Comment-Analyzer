@@ -1,28 +1,26 @@
-name: Debug EC2 SSH
+- name: Deploy to EC2
+  uses: appleboy/ssh-action@v1
+  with:
+    host: ${{ secrets.EC2_HOST }}
+    username: ubuntu
+    key: ${{ secrets.EC2_SSH_KEY }}
+    debug: true
 
-on:
-  workflow_dispatch:
+    script: |
+      echo "===== USER ====="
+      whoami
 
-jobs:
-  ssh-test:
-    runs-on: ubuntu-latest
+      echo "===== HOST ====="
+      hostname
 
-    steps:
-      - name: Test SSH Connection
-        uses: appleboy/ssh-action@v1
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ubuntu
-          key: ${{ secrets.EC2_SSH_KEY }}
-          port: 22
-          debug: true
-          timeout: 60s
-          command_timeout: 30s
+      echo "===== DOCKER ====="
+      docker --version || true
 
-          script: |
-            echo "===== SSH SUCCESS ====="
-            whoami
-            hostname
-            pwd
-            ls -la
-            echo "===== DONE ====="
+      echo "===== COMPOSE ====="
+      docker compose version || true
+
+      echo "===== AWS ====="
+      aws --version || true
+
+      echo "===== APP ====="
+      ls -la ~/app || true
