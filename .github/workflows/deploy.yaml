@@ -52,18 +52,18 @@ jobs:
             key: ${{ secrets.EC2_SSH_KEY }}
             debug: true
 
-    script: |
-      aws ecr get-login-password \
-      --region eu-north-1 \
-      | docker login \
-      --username AWS \
-      --password-stdin \
-      016647419459.dkr.ecr.eu-north-1.amazonaws.com
+            script: |
+              aws ecr get-login-password \
+              --region eu-north-1 \
+              | docker login \
+              --username AWS \
+              --password-stdin \
+              016647419459.dkr.ecr.eu-north-1.amazonaws.com
 
-      cd ~/app
+              cd ~/app
 
-      docker compose pull
+              docker compose pull
 
-      docker compose up -d
+              docker compose up -d
 
-      docker image prune -f
+              docker image prune -f
