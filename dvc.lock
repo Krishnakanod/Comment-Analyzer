@@ -61,11 +61,11 @@ stages:
     outs:
     - path: lgbm_model.pkl
       hash: md5
-      md5: 2e53497cd84ec2d503addc8aa186f9c0
-      size: 9883812
+      md5: b7e1d6e3ae4a63b29e23f3aa3adc0dac
+      size: 9883813
     - path: tfidf_vectorizer.pkl
       hash: md5
-      md5: 055dceaa1ba8feb4021b0ed240b218fa
+      md5: ae9464a90cb0a301f59485cb4b664e8c
       size: 374920
   model_evaluation:
     cmd: python src/model/model_evaluation.py
@@ -76,27 +76,27 @@ stages:
       size: 15997106
     - path: lgbm_model.pkl
       hash: md5
-      md5: 2e53497cd84ec2d503addc8aa186f9c0
-      size: 9883812
+      md5: b7e1d6e3ae4a63b29e23f3aa3adc0dac
+      size: 9883813
     - path: src/model/model_evaluation.py
       hash: md5
       md5: d4ab007eb9b9041a0a23740e0e87eb21
       size: 7395
     - path: tfidf_vectorizer.pkl
       hash: md5
-      md5: 055dceaa1ba8feb4021b0ed240b218fa
+      md5: ae9464a90cb0a301f59485cb4b664e8c
       size: 374920
     outs:
     - path: experiment_info.json
       hash: md5
-      md5: d707a25ef782ac110d7927c396bef3ee
+      md5: 2ec935b76a446116c7706187321c1594
       size: 84
   model_registration:
     cmd: python src/model/register_model.py
     deps:
     - path: experiment_info.json
       hash: md5
-      md5: d707a25ef782ac110d7927c396bef3ee
+      md5: 2ec935b76a446116c7706187321c1594
       size: 84
     - path: src/model/register_model.py
       hash: md5

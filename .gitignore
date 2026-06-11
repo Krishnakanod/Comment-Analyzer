@@ -88,6 +88,10 @@ target/
 # Mypy cache
 .mypy_cache/
 /lgbm_model.pkl
+<<<<<<< HEAD
+=======
+
+>>>>>>> e66b4f7d6e57c52e1145b7c36155151de25a20c4
 
 
 .early.coverage
