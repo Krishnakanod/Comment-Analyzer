@@ -1,13 +1,13 @@
 name: Deploy Backend
 
 on:
-  workflow_dispatch:
+  push:
     branches:
       - master
 
 env:
   AWS_REGION: ${{ secrets.AWS_REGION }}
-  ECR_REPOSITORY: <ECR_REPOSITORY>
+  ECR_REPOSITORY: yt-comment-analysis-plugin
 
 jobs:
 
@@ -45,7 +45,7 @@ jobs:
           016647419459.dkr.ecr.${AWS_REGION}.amazonaws.com/yt-comment-analysis-plugin:latest
 
       - name: Deploy to EC2
-        uses: appleboy/ssh-action@v1.0.3
+        uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
