@@ -1,6 +1,6 @@
 name: CICD Pipeline
 
-on: workflow_dispatch
+on: push
 
 jobs:
   model-deployment:
