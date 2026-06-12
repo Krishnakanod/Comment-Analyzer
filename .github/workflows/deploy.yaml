@@ -31,7 +31,7 @@ jobs:
           AWS_DEFAULT_REGION: ${{ secrets.AWS_REGION }}
         run: |
           pip install dvc dvc-s3  # Added dvc-s3 assuming your DVC remote is an S3 bucket
-          dvc pull
+          dvc pull --force
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
