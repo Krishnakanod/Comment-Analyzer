@@ -84,7 +84,7 @@ def preprocess_comment(comment):
 
         return comment
     except Exception as e:
-        print(f"Error in preprocessing comment: {e}")
+        print(f"Error in preprocessing commen:{e}")
         return comment
 
 # Load the model and vectorizer from the model registry and local storage
