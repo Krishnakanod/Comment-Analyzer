@@ -1,84 +1,91 @@
 name: Deploy Backend
 
 on:
-  push:
-    branches:
-      - master
+  workflow_dispatch:
+branches:
+- master
 
 env:
-  AWS_REGION: ${{ secrets.AWS_REGION }}
-  ECR_REPOSITORY: yt-comment-analysis-plugin
+AWS_REGION: ${{ secrets.AWS_REGION }}
+ECR_REPOSITORY: yt-comment-analysis-plugin
 
 jobs:
-  deploy:
-    runs-on: ubuntu-latest
+deploy:
+runs-on: ubuntu-latest
 
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
+```
+steps:
+  - name: Checkout Code
+    uses: actions/checkout@v4
 
-      # 1. NEW: Set up Python to install DVC
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.10'
+  - name: Set up Python
+    uses: actions/setup-python@v5
+    with:
+      python-version: "3.10"
 
-      # 2. NEW: Install dependencies (DVC) and fetch the model
-      - name: Fetch Model via DVC
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_DEFAULT_REGION: ${{ secrets.AWS_REGION }}
-        run: |
-          pip install dvc dvc-s3  # Added dvc-s3 assuming your DVC remote is an S3 bucket
-          dvc pull --force
+  - name: Install DVC
+    run: |
+      pip install "dvc[s3]"
 
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_REGION }}
+  - name: Pull DVC Artifacts
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_DEFAULT_REGION: ${{ secrets.AWS_REGION }}
+    run: |
+      dvc pull --force
 
-      - name: Login to ECR
-        uses: aws-actions/amazon-ecr-login@v2
+  - name: Verify Artifacts
+    run: |
+      ls -lh
+      ls -lh tfidf_vectorizer.pkl
+      test -s tfidf_vectorizer.pkl
 
-      # Docker will now succeed because `dvc pull` placed the .pkl file here!
-      - name: Build Docker Image
-        run: |
-          docker build -t yt-comment-analysis-plugin .
+  - name: Configure AWS Credentials
+    uses: aws-actions/configure-aws-credentials@v4
+    with:
+      aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      aws-region: ${{ secrets.AWS_REGION }}
 
-      - name: Tag Docker Image
-        run: |
-          docker tag yt-comment-analysis-plugin:latest \
-          016647419459.dkr.ecr.${AWS_REGION}.amazonaws.com/yt-comment-analysis-plugin:latest
+  - name: Login to ECR
+    uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Push Docker Image
-        run: |
-          docker push \
-          016647419459.dkr.ecr.${AWS_REGION}.amazonaws.com/yt-comment-analysis-plugin:latest
+  - name: Build Docker Image
+    run: |
+      docker build -t $ECR_REPOSITORY .
 
-      - name: Deploy to EC2
-        uses: appleboy/ssh-action@v1
-        with:
-            host: ${{ secrets.EC2_HOST }}
-            username: ubuntu
-            key: ${{ secrets.EC2_SSH_KEY }}
-            debug: true
-            # 3. IMPROVED: Changed the hardcoded 'eu-north-1' to use your environment variable 
-            # to prevent region mismatches.
-            script: |
-              aws ecr get-login-password \
-              --region ${{ secrets.AWS_REGION }} \
-              | docker login \
-              --username AWS \
-              --password-stdin \
-              016647419459.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com
+  - name: Tag Docker Image
+    run: |
+      docker tag $ECR_REPOSITORY:latest \
+      016647419459.dkr.ecr.${AWS_REGION}.amazonaws.com/$ECR_REPOSITORY:latest
 
-              cd ~/app
+  - name: Push Docker Image
+    run: |
+      docker push \
+      016647419459.dkr.ecr.${AWS_REGION}.amazonaws.com/$ECR_REPOSITORY:latest
 
-              docker compose pull
+  - name: Deploy to EC2
+    uses: appleboy/ssh-action@v1
+    with:
+      host: ${{ secrets.EC2_HOST }}
+      username: ubuntu
+      key: ${{ secrets.EC2_SSH_KEY }}
+      debug: true
+      script: |
+        aws ecr get-login-password \
+        --region ${{ secrets.AWS_REGION }} \
+        | docker login \
+        --username AWS \
+        --password-stdin \
+        016647419459.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com
 
-              docker compose up -d
+        cd ~/app
 
-              docker image prune -f
+        docker compose pull
+
+        docker compose down
+
+        docker compose up -d
+
+        docker image prune -f
