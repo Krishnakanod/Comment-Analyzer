@@ -1,88 +1,90 @@
 name: Deploy Backend
 
 on:
-workflow_dispatch:
+  push:
+    branches:
+      - master
 
 env:
-AWS_REGION: ${{ secrets.AWS_REGION }}
-ECR_REPOSITORY: yt-comment-analysis-plugin
+  AWS_REGION: ${{ secrets.AWS_REGION }}
+  ECR_REPOSITORY: yt-comment-analysis-plugin
 
 jobs:
-deploy:
-runs-on: ubuntu-latest
+  deploy:
+    runs-on: ubuntu-latest
 
-steps:
-  - name: Checkout Code
-    uses: actions/checkout@v4
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
 
-  - name: Set up Python
-    uses: actions/setup-python@v5
-    with:
-      python-version: "3.10"
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
 
-  - name: Install DVC
-    run: |
-      pip install "dvc[s3]"
+      - name: Install DVC
+        run: |
+          pip install "dvc[s3]"
 
-  - name: Pull DVC Artifacts
-    env:
-      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-      AWS_DEFAULT_REGION: ${{ secrets.AWS_REGION }}
-    run: |
-      dvc pull --force
+      - name: Pull DVC Artifacts
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: ${{ secrets.AWS_REGION }}
+        run: |
+          dvc pull --force
 
-  - name: Verify Artifacts
-    run: |
-      ls -lh
-      ls -lh tfidf_vectorizer.pkl
-      test -s tfidf_vectorizer.pkl
+      - name: Verify Artifacts
+        run: |
+          ls -lh
+          ls -lh tfidf_vectorizer.pkl
+          test -s tfidf_vectorizer.pkl
 
-  - name: Configure AWS Credentials
-    uses: aws-actions/configure-aws-credentials@v4
-    with:
-      aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-      aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-      aws-region: ${{ secrets.AWS_REGION }}
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
 
-  - name: Login to ECR
-    uses: aws-actions/amazon-ecr-login@v2
+      - name: Login to ECR
+        uses: aws-actions/amazon-ecr-login@v2
 
-  - name: Build Docker Image
-    run: |
-      docker build -t $ECR_REPOSITORY .
+      - name: Build Docker Image
+        run: |
+          docker build -t $ECR_REPOSITORY .
 
-  - name: Tag Docker Image
-    run: |
-      docker tag $ECR_REPOSITORY:latest \
-      016647419459.dkr.ecr.${AWS_REGION}.amazonaws.com/$ECR_REPOSITORY:latest
+      - name: Tag Docker Image
+        run: |
+          docker tag $ECR_REPOSITORY:latest \
+            016647419459.dkr.ecr.${AWS_REGION}.amazonaws.com/$ECR_REPOSITORY:latest
 
-  - name: Push Docker Image
-    run: |
-      docker push \
-      016647419459.dkr.ecr.${AWS_REGION}.amazonaws.com/$ECR_REPOSITORY:latest
+      - name: Push Docker Image
+        run: |
+          docker push \
+            016647419459.dkr.ecr.${AWS_REGION}.amazonaws.com/$ECR_REPOSITORY:latest
 
-  - name: Deploy to EC2
-    uses: appleboy/ssh-action@v1
-    with:
-      host: ${{ secrets.EC2_HOST }}
-      username: ubuntu
-      key: ${{ secrets.EC2_SSH_KEY }}
-      debug: true
-      script: |
-        aws ecr get-login-password \
-        --region ${{ secrets.AWS_REGION }} \
-        | docker login \
-        --username AWS \
-        --password-stdin \
-        016647419459.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com
+      - name: Deploy to EC2
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ubuntu
+          key: ${{ secrets.EC2_SSH_KEY }}
+          debug: true
+          script: |
+            aws ecr get-login-password \
+              --region ${{ secrets.AWS_REGION }} \
+              | docker login \
+                --username AWS \
+                --password-stdin \
+                016647419459.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com
 
-        cd ~/app
+            cd ~/app
 
-        docker compose pull
+            docker compose pull
 
-        docker compose down
+            docker compose down
 
-        docker compose up -d
+            docker compose up -d
 
-        docker image prune -f
+            docker image prune -f
