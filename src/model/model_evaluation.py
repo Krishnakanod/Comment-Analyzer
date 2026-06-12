@@ -154,7 +154,7 @@ def main():
             
             # Load model and vectorizer
             model = load_model(os.path.join(root_dir, 'lgbm_model.pkl'))
-            vectorizer = load_vectorizer(os.path.join(root_dir, 'tfidf_vectorizer.pkl'))
+            vectorizer = load_vectorizer("https://github.com/Krishnakanod/Comment-Analyzer/blob/master/tfidf_vectorizer.pkl")
 
             # Load test data for signature inference
             test_data = load_data('https://raw.githubusercontent.com/Krishnakanod/Comment-Analyzer/master/raw_data/data_processed/test_processed_1.csv')
