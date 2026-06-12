@@ -10,15 +10,28 @@ env:
   ECR_REPOSITORY: yt-comment-analysis-plugin
 
 jobs:
-
   deploy:
-
     runs-on: ubuntu-latest
 
     steps:
-
       - name: Checkout Code
         uses: actions/checkout@v4
+
+      # 1. NEW: Set up Python to install DVC
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      # 2. NEW: Install dependencies (DVC) and fetch the model
+      - name: Fetch Model via DVC
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: ${{ secrets.AWS_REGION }}
+        run: |
+          pip install dvc dvc-s3  # Added dvc-s3 assuming your DVC remote is an S3 bucket
+          dvc pull
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -30,6 +43,7 @@ jobs:
       - name: Login to ECR
         uses: aws-actions/amazon-ecr-login@v2
 
+      # Docker will now succeed because `dvc pull` placed the .pkl file here!
       - name: Build Docker Image
         run: |
           docker build -t yt-comment-analysis-plugin .
@@ -51,14 +65,15 @@ jobs:
             username: ubuntu
             key: ${{ secrets.EC2_SSH_KEY }}
             debug: true
-
+            # 3. IMPROVED: Changed the hardcoded 'eu-north-1' to use your environment variable 
+            # to prevent region mismatches.
             script: |
               aws ecr get-login-password \
-              --region eu-north-1 \
+              --region ${{ secrets.AWS_REGION }} \
               | docker login \
               --username AWS \
               --password-stdin \
-              016647419459.dkr.ecr.eu-north-1.amazonaws.com
+              016647419459.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com
 
               cd ~/app
 
