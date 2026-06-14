@@ -2,7 +2,7 @@
 
 document.addEventListener("DOMContentLoaded", async () => {
   const outputDiv = document.getElementById("output");
-  const API_URL = 'http://localhost:5000';
+  const API_URL = 'http://13.235.90.189:5000/'; // Change this if your Flask server runs on a different URL or port
   let fetchedComments = [];
 
   // HARDCODED YOUTUBE API KEY

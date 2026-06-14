@@ -12,7 +12,7 @@
     "scripting"
   ],
   "host_permissions": [
-    "http://localhost/*",
+    "http://13.235.90.189:5000/",
     "https://www.googleapis.com/*"
   ]
 }
