@@ -45,7 +45,10 @@ load_dotenv()
 
 MLFLOW_TRACKING_URI = os.getenv('MLFLOW_TRACKING_URI', 'http://ec2-13-53-42-235.eu-north-1.compute.amazonaws.com:5000/')
 MLFLOW_MODEL_NAME = 'yt_chrome_plugin_model'
-MLFLOW_MODEL_VERSION = '1'
+# Load the latest Production model — CICD promotes the newest registered version
+# to Production via promote_model.py, so this always serves the correct model
+# without needing to manually bump a hardcoded version number.
+MLFLOW_MODEL_STAGE = 'Production'
 TFIDF_VECTORIZER_PATH = os.path.join(ROOT_DIR, 'tfidf_vectorizer.pkl')
 
 app = Flask(__name__)
@@ -88,17 +91,19 @@ def preprocess_comment(comment):
         print(f"Error in preprocessing commen:{e}")
         return comment
 
-# Load the model and vectorizer from the model registry and local storage
-def load_model_and_vectorizer(model_name, model_version, vectorizer_path):
+# Load the model from MLflow Registry (Production stage) and vectorizer from local storage.
+# Using stage='Production' ensures the server always loads the model that was
+# validated and promoted by the CICD pipeline, not a stale hardcoded version number.
+def load_model_and_vectorizer(model_name, model_stage, vectorizer_path):
     mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
     client = MlflowClient()
-    model_uri = f"models:/{model_name}/{model_version}"
+    model_uri = f"models:/{model_name}/{model_stage}"
     model = mlflow.sklearn.load_model(model_uri)
     vectorizer = joblib.load(vectorizer_path)
     return model, vectorizer
 
 # Initialize the model and vectorizer
-model, vectorizer = load_model_and_vectorizer(MLFLOW_MODEL_NAME, MLFLOW_MODEL_VERSION, TFIDF_VECTORIZER_PATH)
+model, vectorizer = load_model_and_vectorizer(MLFLOW_MODEL_NAME, MLFLOW_MODEL_STAGE, TFIDF_VECTORIZER_PATH)
 
 @app.route('/')
 def home():
@@ -122,20 +127,13 @@ def predict_with_timestamps():
         # 1. Transform comments using the vectorizer
         transformed_comments = vectorizer.transform(preprocessed_comments)
         
-        # 2. Convert sparse matrix to dense array
-        dense_array = transformed_comments.toarray()
-        
-        # 3. Get the exact feature names (vocabulary)
-        # feature_names = vectorizer.get_feature_names_out()
-        
-        # 4. Skip creating the Pandas DataFrame to avoid MLflow schema enforcement issues with large number of numeric string columns
-        # input_df = pd.DataFrame(dense_array, columns=feature_names)
-        
-        # 5. Make predictions directly using the dense array
-        predictions = model.predict(dense_array).tolist()
+        # 2. Pass the sparse matrix directly — LightGBM natively accepts it.
+        # No need to convert to DataFrame; schema enforcement is no longer active
+        # since we load via mlflow.sklearn.load_model.
+        predictions = model.predict(transformed_comments).tolist()
         
         # Convert predictions to strings for consistency
-        predictions = [str(pred) for pred in predictions]
+        predictions = [str(int(pred)) for pred in predictions]
         
     except Exception as e:
         return jsonify({"error": f"Prediction failed: {str(e)}"}), 500
@@ -205,20 +203,11 @@ def predict():
         # 1. Transform comments using the vectorizer
         transformed_comments = vectorizer.transform(preprocessed_comments)
         
-        # 2. Convert sparse matrix to dense array
-        dense_array = transformed_comments.toarray()
-        
-        # 3. Get the exact feature names (vocabulary)
-        # feature_names = vectorizer.get_feature_names_out()
-        
-        # 4. Skip creating the Pandas DataFrame to avoid MLflow schema enforcement issues
-        # input_df = pd.DataFrame(dense_array, columns=feature_names)
-        
-        # 5. Make predictions directly using the dense array
-        predictions = model.predict(dense_array).tolist()
+        # 2. Pass the sparse matrix directly — no DataFrame/schema enforcement needed
+        predictions = model.predict(transformed_comments).tolist()
         
         # Convert predictions to strings for consistency
-        predictions = [str(pred) for pred in predictions]
+        predictions = [str(int(pred)) for pred in predictions]
         
     except Exception as e:
         return jsonify({"error": f"Prediction failed: {str(e)}"}), 500
