@@ -44,7 +44,10 @@ load_dotenv()
 
 MLFLOW_TRACKING_URI = os.getenv('MLFLOW_TRACKING_URI', 'http://ec2-13-53-42-235.eu-north-1.compute.amazonaws.com:5000/')
 MLFLOW_MODEL_NAME = 'yt_chrome_plugin_model'
-MLFLOW_MODEL_VERSION = '1'
+# Load the latest Production model — CICD promotes the newest registered version
+# to Production via promote_model.py, so this always serves the correct model
+# without needing to manually bump a hardcoded version number.
+MLFLOW_MODEL_STAGE = 'Production'
 TFIDF_VECTORIZER_PATH = os.getenv('TFIDF_VECTORIZER_PATH', './tfidf_vectorizer.pkl')
 
 app = Flask(__name__)
@@ -87,19 +90,19 @@ def preprocess_comment(comment):
         print(f"Error in preprocessing commen:{e}")
         return comment
 
-# Load the model from MLflow Registry and vectorizer from local storage.
-# The model is now logged WITHOUT a strict input signature (see model_evaluation.py),
-# so pyfunc.load_model will not enforce schema at prediction time.
-def load_model_and_vectorizer(model_name, model_version, vectorizer_path):
+# Load the model from MLflow Registry (Production stage) and vectorizer from local storage.
+# Using stage='Production' ensures the server always loads the model that was
+# validated and promoted by the CICD pipeline, not a stale hardcoded version number.
+def load_model_and_vectorizer(model_name, model_stage, vectorizer_path):
     mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
     client = MlflowClient()
-    model_uri = f"models:/{model_name}/{model_version}"
+    model_uri = f"models:/{model_name}/{model_stage}"
     model = mlflow.pyfunc.load_model(model_uri)
     vectorizer = joblib.load(vectorizer_path)
     return model, vectorizer
 
 # Initialize the model and vectorizer
-model, vectorizer = load_model_and_vectorizer(MLFLOW_MODEL_NAME, MLFLOW_MODEL_VERSION, TFIDF_VECTORIZER_PATH)
+model, vectorizer = load_model_and_vectorizer(MLFLOW_MODEL_NAME, MLFLOW_MODEL_STAGE, TFIDF_VECTORIZER_PATH)
 
 @app.route('/')
 def home():
