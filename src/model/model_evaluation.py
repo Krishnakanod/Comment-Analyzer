@@ -168,17 +168,16 @@ def main():
             # Infer the signature
             signature = infer_signature(input_example, model.predict(X_test_tfidf[:5]))  # <--- Added for signature
 
-            # Log model WITHOUT a strict input signature.
-            # Logging a signature locks the model to a specific DataFrame schema,
-            # which causes "Failed to enforce schema" 500 errors at prediction time
-            # when the live vectorizer vocabulary differs even slightly from the
-            # one used during training. Removing the signature keeps all MLflow
-            # tracking (metrics, params, artifacts, registry) intact while
-            # allowing the pyfunc model to accept inputs without schema validation.
+            # Log model WITHOUT signature or input_example.
+            # In MLflow 2.x, providing input_example (even without explicit signature=)
+            # causes MLflow to AUTO-INFER and store a schema. That stored schema is then
+            # enforced by mlflow.pyfunc.load_model at prediction time, throwing
+            # "Failed to enforce schema" 500 errors. Removing both prevents any schema
+            # from being embedded in the model artifact — MLflow tracking, registry,
+            # versioning, and promotion all remain fully intact.
             mlflow.sklearn.log_model(
                 model,
-                "lgbm_model",
-                input_example=input_example  # kept for documentation in MLflow UI
+                "lgbm_model"
             )
 
             # Save model info
