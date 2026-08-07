@@ -15,4 +15,4 @@ RUN python -m nltk.downloader stopwords wordnet
 
 EXPOSE 5000
 
-CMD ["python","-m" ,"backend.app"]
+CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "4", "backend.app:app"]

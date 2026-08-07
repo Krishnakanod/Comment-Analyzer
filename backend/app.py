@@ -29,6 +29,7 @@ import io
 import matplotlib.pyplot as plt
 from wordcloud import WordCloud
 import mlflow
+import mlflow.sklearn
 import numpy as np
 import joblib
 import re
@@ -45,7 +46,7 @@ load_dotenv()
 MLFLOW_TRACKING_URI = os.getenv('MLFLOW_TRACKING_URI', 'http://ec2-13-53-42-235.eu-north-1.compute.amazonaws.com:5000/')
 MLFLOW_MODEL_NAME = 'yt_chrome_plugin_model'
 MLFLOW_MODEL_VERSION = '1'
-TFIDF_VECTORIZER_PATH = './tfidf_vectorizer.pkl'
+TFIDF_VECTORIZER_PATH = os.path.join(ROOT_DIR, 'tfidf_vectorizer.pkl')
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
@@ -92,7 +93,7 @@ def load_model_and_vectorizer(model_name, model_version, vectorizer_path):
     mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
     client = MlflowClient()
     model_uri = f"models:/{model_name}/{model_version}"
-    model = mlflow.pyfunc.load_model(model_uri)
+    model = mlflow.sklearn.load_model(model_uri)
     vectorizer = joblib.load(vectorizer_path)
     return model, vectorizer
 
@@ -125,13 +126,13 @@ def predict_with_timestamps():
         dense_array = transformed_comments.toarray()
         
         # 3. Get the exact feature names (vocabulary)
-        feature_names = vectorizer.get_feature_names_out()
+        # feature_names = vectorizer.get_feature_names_out()
         
-        # 4. Create the Pandas DataFrame to satisfy MLflow's schema requirement
-        input_df = pd.DataFrame(dense_array, columns=feature_names)
+        # 4. Skip creating the Pandas DataFrame to avoid MLflow schema enforcement issues with large number of numeric string columns
+        # input_df = pd.DataFrame(dense_array, columns=feature_names)
         
-        # 5. Make predictions using the DataFrame
-        predictions = model.predict(input_df).tolist()
+        # 5. Make predictions directly using the dense array
+        predictions = model.predict(dense_array).tolist()
         
         # Convert predictions to strings for consistency
         predictions = [str(pred) for pred in predictions]
@@ -208,13 +209,13 @@ def predict():
         dense_array = transformed_comments.toarray()
         
         # 3. Get the exact feature names (vocabulary)
-        feature_names = vectorizer.get_feature_names_out()
+        # feature_names = vectorizer.get_feature_names_out()
         
-        # 4. Create the Pandas DataFrame
-        input_df = pd.DataFrame(dense_array, columns=feature_names)
+        # 4. Skip creating the Pandas DataFrame to avoid MLflow schema enforcement issues
+        # input_df = pd.DataFrame(dense_array, columns=feature_names)
         
-        # 5. Make predictions
-        predictions = model.predict(input_df).tolist()
+        # 5. Make predictions directly using the dense array
+        predictions = model.predict(dense_array).tolist()
         
         # Convert predictions to strings for consistency
         predictions = [str(pred) for pred in predictions]
