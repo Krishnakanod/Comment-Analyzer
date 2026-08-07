@@ -45,7 +45,7 @@ load_dotenv()
 MLFLOW_TRACKING_URI = os.getenv('MLFLOW_TRACKING_URI', 'http://ec2-13-53-42-235.eu-north-1.compute.amazonaws.com:5000/')
 MLFLOW_MODEL_NAME = 'yt_chrome_plugin_model'
 MLFLOW_MODEL_VERSION = '1'
-TFIDF_VECTORIZER_PATH = './tfidf_vectorizer.pkl'
+TFIDF_VECTORIZER_PATH = os.getenv('TFIDF_VECTORIZER_PATH', './tfidf_vectorizer.pkl')
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
@@ -87,15 +87,14 @@ def preprocess_comment(comment):
         print(f"Error in preprocessing commen:{e}")
         return comment
 
-# Load the model and vectorizer from the model registry and local storage
+# Load the model from MLflow Registry and vectorizer from local storage.
+# The model is now logged WITHOUT a strict input signature (see model_evaluation.py),
+# so pyfunc.load_model will not enforce schema at prediction time.
 def load_model_and_vectorizer(model_name, model_version, vectorizer_path):
     mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
     client = MlflowClient()
     model_uri = f"models:/{model_name}/{model_version}"
-    # Use mlflow.sklearn.load_model to get the raw sklearn/LightGBM object
-    # without MLflow's strict schema enforcement, which caused the 500 error
-    # when the local vectorizer vocabulary didn't exactly match the logged signature.
-    model = mlflow.sklearn.load_model(model_uri)
+    model = mlflow.pyfunc.load_model(model_uri)
     vectorizer = joblib.load(vectorizer_path)
     return model, vectorizer
 
