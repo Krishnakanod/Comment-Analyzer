@@ -92,7 +92,10 @@ def load_model_and_vectorizer(model_name, model_version, vectorizer_path):
     mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
     client = MlflowClient()
     model_uri = f"models:/{model_name}/{model_version}"
-    model = mlflow.pyfunc.load_model(model_uri)
+    # Use mlflow.sklearn.load_model to get the raw sklearn/LightGBM object
+    # without MLflow's strict schema enforcement, which caused the 500 error
+    # when the local vectorizer vocabulary didn't exactly match the logged signature.
+    model = mlflow.sklearn.load_model(model_uri)
     vectorizer = joblib.load(vectorizer_path)
     return model, vectorizer
 
@@ -121,20 +124,13 @@ def predict_with_timestamps():
         # 1. Transform comments using the vectorizer
         transformed_comments = vectorizer.transform(preprocessed_comments)
         
-        # 2. Convert sparse matrix to dense array
-        dense_array = transformed_comments.toarray()
-        
-        # 3. Get the exact feature names (vocabulary)
-        feature_names = vectorizer.get_feature_names_out()
-        
-        # 4. Create the Pandas DataFrame to satisfy MLflow's schema requirement
-        input_df = pd.DataFrame(dense_array, columns=feature_names)
-        
-        # 5. Make predictions using the DataFrame
-        predictions = model.predict(input_df).tolist()
+        # 2. Pass the sparse matrix directly — LightGBM natively accepts it.
+        # No need to convert to DataFrame; schema enforcement is no longer active
+        # since we load via mlflow.sklearn.load_model.
+        predictions = model.predict(transformed_comments).tolist()
         
         # Convert predictions to strings for consistency
-        predictions = [str(pred) for pred in predictions]
+        predictions = [str(int(pred)) for pred in predictions]
         
     except Exception as e:
         return jsonify({"error": f"Prediction failed: {str(e)}"}), 500
@@ -204,20 +200,11 @@ def predict():
         # 1. Transform comments using the vectorizer
         transformed_comments = vectorizer.transform(preprocessed_comments)
         
-        # 2. Convert sparse matrix to dense array
-        dense_array = transformed_comments.toarray()
-        
-        # 3. Get the exact feature names (vocabulary)
-        feature_names = vectorizer.get_feature_names_out()
-        
-        # 4. Create the Pandas DataFrame
-        input_df = pd.DataFrame(dense_array, columns=feature_names)
-        
-        # 5. Make predictions
-        predictions = model.predict(input_df).tolist()
+        # 2. Pass the sparse matrix directly — no DataFrame/schema enforcement needed
+        predictions = model.predict(transformed_comments).tolist()
         
         # Convert predictions to strings for consistency
-        predictions = [str(pred) for pred in predictions]
+        predictions = [str(int(pred)) for pred in predictions]
         
     except Exception as e:
         return jsonify({"error": f"Prediction failed: {str(e)}"}), 500
